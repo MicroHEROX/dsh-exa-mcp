@@ -46,12 +46,27 @@
 - **解决**：`npm install -g pnpm`；或走 `--patch` / 合并 profile patch 的免安装路线
 - **官方文档**：[publish.md](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)
 
-### 1.7 `dsh plugin add` 偶发 manifest 未更新
+### 1.7 `dsh plugin add` 偶发 manifest 未更新（git 协议复现确认）
 
-- **现象**：remove 后立即 add，pnpm 显示已链接但 `dsh.profile.bundles` 未追加
-- **原因**：CLI 的依赖安装与 manifest 写入存在时序竞态（dsh 自身行为）
-- **解决**：重跑一次 `add` 即幂等收敛（已实测两次 add 后正常）
-- **官方文档**：[publish.md](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)
+- **现象**：`dsh plugin --profile <p> add github:MicroHEROX/dsh-exa-mcp` 后 pnpm 链接成功、`dependencies` 已写入，但 `dsh.profile.bundles` **未追加**（`--dump-config` 无 bundle 层）；`link:` 本地路径方式正常
+- **原因**：CLI 的 `reconcilePlugins` 依赖 `exportsPatch()`（`resolveBundleDir` 解析已安装包）判断是否追加；对 git 协议安装的包解析失败返回 false，并打印一条易被忽略的 warning（`declares no dsh.bundle`）
+- **解决**：手动把 bundle 补进 profile 的 `dsh.profile.bundles`（node 无 BOM 重写 package.json，勿用 PowerShell `ConvertTo-Json`——会写 UTF-8 BOM，dsh 的 JSON 解析会报 `SyntaxError: Unexpected token`）；或改用 `--patch` overlay
+- **实测**：dsh 0.1.0-rc.6 + pnpm 11.21，github: 协议两次 add 均未收敛；link: 协议正常（CLI 自身 bug，非插件问题）
+
+### 1.8 有 key 但工具集不变（白名单是必须的）
+
+- **现象**：设置 `EXA_API_KEY` 后 `tools/list` 仍只有 `web_search_exa`、`web_fetch_exa`，advanced/agent 工具不出现
+- **原因**：Exa 服务端对"默认工具集"的界定与鉴权解耦——可选工具必须经 URL `?tools=` 白名单显式启用（实测：`?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa` 后 3 工具；`?tools=...,agent_run` 后 agent_run 出现）
+- **解决**：覆盖 `mcp-exa` 行的 `url` 加上所需白名单
+- **实测**（2026-08-14，真实 API key）：匿名与带 key 默认均 2 工具；白名单后 `web_search_advanced_exa`（27 参数：域名/日期/livecrawl/摘要/子页面等）与 `agent_run` 可见且可调用
+- **官方文档**：[Exa MCP 文档](https://exa.ai/docs/reference/exa-mcp)（"Tool enablement (optional)" 一节）
+
+### 1.9 PowerShell `ConvertTo-Json` 写 UTF-8 BOM 破坏 dsh JSON
+
+- **现象**：手动改 profile `package.json` 后 `dsh` 报 `SyntaxError: Unexpected token '﻿'`
+- **原因**：PS 5.1 `ConvertTo-Json | Set-Content -Encoding UTF8` 写 BOM；dsh 的 JSON 读取不做 BOM 剥离
+- **解决**：用 node `fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n', 'utf8')` 无 BOM 写入
+- **备注**：仅影响手工维护 profile manifest 的工程操作，不影响 `dsh plugin` 本身
 
 ## 二、运行时与调用类
 
