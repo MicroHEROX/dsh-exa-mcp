@@ -1,6 +1,6 @@
 # 解决方案文档
 
-> 本工程的坑（pitfalls）、疑难问题、解决方法与验证方法论。每条含「现象 → 原因 → 解决」与对应官方/本仓库文档地址（如适用）。所有条目均经真实环境验证。
+> 本工程的坑（pitfalls）、疑难问题、解决方法与验证方法论。每条含「现象 → 原因 → 解决」与对应官方/本仓库文档地址（如适用）。所有条目均经真实环境验证（dsh 0.1.0-rc.6）。
 
 ## 一、配置与加载类
 
@@ -25,12 +25,13 @@
 - **解决**：条件表达式 `!!js 'process.env.EXA_API_KEY ? { "x-api-key": process.env.EXA_API_KEY } : {}'` —— 无 key 时空对象（匿名免费额度），有 key 自动附头
 - **验证**：A/B 实测——匿名搜索成功；伪 key 被 Exa 拒为 `401 Invalid API key`（证明 header 送达且被使用）
 
-### 1.4 匿名层 vs 有 key 层工具集差异
+### 1.4 工具集与鉴权/白名单的关系（匿名、有 key、白名单三者）
 
-- **现象**：匿名 `tools/list` 只有 2 个工具；文档中的 advanced/agent 工具不可见
-- **原因**：Exa 服务端按鉴权决定工具集；Agent 需鉴权并按用量计费
-- **解决**：设置 `EXA_API_KEY` 并重启；需 `agent_run` 时在 URL 加白名单 `?tools=web_search_exa,web_fetch_exa,agent_run`
-- **官方文档**：[Exa MCP 文档](https://exa.ai/docs/reference/exa-mcp) · [exa-mcp-server](https://github.com/exa-labs/exa-mcp-server)
+- **现象**：① 匿名 `tools/list` 只有 2 个工具；② 设置 `EXA_API_KEY` 后工具集**不变**；③ 匿名下 advanced 也**不可见**
+- **原因**：Exa 服务端对"默认工具集"的界定与鉴权**解耦**——可选工具必须经 URL `?tools=` 白名单显式启用（实测：`?tools=...,web_search_advanced_exa` 后 3 工具；`?tools=...,agent_run` 后 agent_run 出现）
+- **解决**：覆盖 `mcp-exa` 行的 `url` 加上所需白名单；`agent_run` 还需 API key（匿名白名单调用报 `-32000 Authentication required`）
+- **实测**（2026-08-14，真实 API key）：匿名与带 key 默认均 2 工具；**advanced 匿名即可用**（白名单即启用）；agent_run 需 key + 白名单
+- **官方文档**：[Exa MCP 文档](https://exa.ai/docs/reference/exa-mcp)（"Tool enablement (optional)" 一节）
 
 ### 1.5 `serverName` 冲突
 
@@ -49,20 +50,11 @@
 ### 1.7 `dsh plugin add`（github: 协议）偶发不生效——网络抖动时序
 
 - **现象**：`dsh plugin --profile <p> add github:MicroHEROX/dsh-exa-mcp` 偶发：依赖未写入、或已写入但 `dsh.profile.bundles` 未追加；`remove` 后偶发 bundles 残留悬空引用导致 `cannot resolve profile bundle` 启动失败
-- **根因（实测定位）**：**不是插件问题，也不是 CLI 稳定 bug**——github.com 网络抖动（ECONNRESET/ETIMEDOUT 的 git HEAD 探测重试）窗口内：① pnpm 可能安装失败（`dsh` 只在 stderr 打一行 `pnpm failed`，易被忽略）；② pnpm 输出 Done 但 git checkout 仍在异步落地，`reconcilePlugins` 跑在空 node_modules 上 → 不追加，此后不再补偿；③ 中途失败回滚 manifest 依赖项
-- **对照实测**：网络正常时（5s 完成）add/remove/reconcile **全流程正确**（bundles 追加/移除、node_modules 干净）；`link:`/`file:` 本地安装无网络依赖，始终正常
-- **解决/健壮性建议**：① 网络不稳时优先 `--patch` overlay 或本地路径安装；② github: 安装后按 README 提供的一行命令**验证并修复** manifest；③ 已上报官方建议（Discussions #656：reconcile 等待 git checkout 落地、pnpm 失败提示更醒目）
-- **附带坑**：手动维护 manifest 用 node 无 BOM 写入（PowerShell `ConvertTo-Json` 会写 UTF-8 BOM，见 1.9）
+- **根因（实测定位）**：**不是插件问题，也不是 CLI 稳定 bug**——github.com 网络抖动（ECONNRESET/ETIMEDOUT 的 git HEAD 探测重试）窗口内：① pnpm 安装失败（`dsh` 只在 stderr 打一行 `pnpm failed`，易被忽略）；② pnpm 输出 Done 但 git checkout 异步落地，`reconcilePlugins` 跑在空 node_modules 上 → 不追加，此后不再补偿；③ 中途失败回滚 manifest 依赖项。网络正常时（实测 5s 完成）add/remove/reconcile **全流程正确**
+- **解决**：① 网络不稳时优先 `--patch` overlay 或本地路径安装（`link:`/`file:` 无网络依赖，始终正常）；② github: 安装后按 README 提供的一行命令**验证并修复** manifest；③ 已上报官方建议（Discussions #656：reconcile 等待 git checkout 落地、pnpm 失败提示更醒目）
+- **附带**：手动维护 manifest 的 BOM 问题见 1.8
 
-### 1.8 有 key 但工具集不变（白名单是必须的）
-
-- **现象**：设置 `EXA_API_KEY` 后 `tools/list` 仍只有 `web_search_exa`、`web_fetch_exa`，advanced/agent 工具不出现
-- **原因**：Exa 服务端对"默认工具集"的界定与鉴权解耦——可选工具必须经 URL `?tools=` 白名单显式启用（实测：`?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa` 后 3 工具；`?tools=...,agent_run` 后 agent_run 出现）
-- **解决**：覆盖 `mcp-exa` 行的 `url` 加上所需白名单
-- **实测**（2026-08-14，真实 API key）：匿名与带 key 默认均 2 工具；白名单后 `web_search_advanced_exa`（27 参数：域名/日期/livecrawl/摘要/子页面等）与 `agent_run` 可见且可调用
-- **官方文档**：[Exa MCP 文档](https://exa.ai/docs/reference/exa-mcp)（"Tool enablement (optional)" 一节）
-
-### 1.9 PowerShell `ConvertTo-Json` 写 UTF-8 BOM 破坏 dsh JSON
+### 1.8 PowerShell `ConvertTo-Json` 写 UTF-8 BOM 破坏 dsh JSON
 
 - **现象**：手动改 profile `package.json` 后 `dsh` 报 `SyntaxError: Unexpected token '﻿'`
 - **原因**：PS 5.1 `ConvertTo-Json | Set-Content -Encoding UTF8` 写 BOM；dsh 的 JSON 读取不做 BOM 剥离
@@ -103,7 +95,7 @@
 
 - **现象**：点击 Web UI 顶部的 **Session log** 按钮后，浏览器自动下载 `dsh-session-session-<uuid>.zip` 到下载目录
 - **原因**：dsh 自带的会话导出功能（导出当前会话为 zip，内含**明文** `session.jsonl`），非异常行为
-- **解决/利用**：无需处理；可用于快速核对会话内容——导出物是明文 jsonl，**免去多帧 zstd 解压**（见 4.2）
+- **解决/利用**：无需处理；导出物是明文 jsonl，可用于快速核对会话内容（免去多帧 zstd 解压）
 - **实测**：dsh 0.1.0-rc.6 Web UI，导出内容与落盘会话日志一致，无敏感数据（key 零泄漏）
 
 ## 三、工程环境类（Windows 开发坑）
@@ -124,10 +116,9 @@
 
 ### 3.3 GitHub 安装与文档分发
 
-- **现象**：担心 `github:you/dsh-exa-mcp` 安装会把 docs 文档也装进运行环境
-- **原因/机制**：pnpm 的 git 依赖按 npm 打包规则安装——只打包 `package.json` 的 `files` 字段列出的文件；`docs/` 不在其中
-- **解决**：运行时内容由 `files` 字段控制（保持最小集，**不要**把 `docs/` 加入）；文档随 git 仓库完整分发（`git ls-files` 可见全部 docs）
-- **实测**：本地 git 仓库 + `git+file://...#HEAD` 依赖协议安装后，`node_modules/dsh-exa-mcp/` 仅含 `cordis.patch.yml` 与包文件，无 `docs/`；`--dump-config` 合成正常
+- **机制**：pnpm 的 git 依赖按 npm 打包规则安装——只打包 `package.json` 的 `files` 字段列出的文件；`docs/` 不在其中，因此**不会进入运行环境**（实测 `node_modules/dsh-exa-mcp/` 仅含 `cordis.patch.yml` 与包文件）
+- **要点**：`files` 保持最小集（**不要**加入 `docs/`）；文档随 git 仓库完整分发
+- **详见**：[PROJECT.md §6](PROJECT.md)
 
 ### 3.4 `profiles/node_modules` 等残留
 
@@ -152,11 +143,10 @@
 
 - **mock LLM**（OpenAI 兼容 SSE，本地端口）：无 API key 也能驱动真实 agent 循环；mock 记录请求 `tools` 数组 → 直接断言模型可见工具集与 schema；有状态 mock（search → fetch → 总结）验证多步调用
 - **会话日志即真相**：`tool/call`（`data.name`/`data.arguments`）、`tool/result`（文本 + `isError`）结构化断言
-- **注意**：`session.jsonl.zstd` 是**多帧** zstd——Node `zstdDecompressSync` 只解第一帧；用 python `zstandard` 的 `stream_reader` 或流式 API 解全部帧（本工程踩过）
+- **注意**：`session.jsonl.zstd` 是**多帧** zstd——Node `zstdDecompressSync` 只解第一帧；用 python `zstandard` 的 `stream_reader` 解全部帧（本工程踩过）；或经 Web UI「Session log」导出明文 jsonl（见 2.5）
 - **A/B 鉴权测试**：伪 key → Exa `401 Invalid API key`，与匿名成功对照，证明 header 路径
 - **web UI 全交互**（WebBridge 驱动真实浏览器）：选工作区 → 发消息 → UI 消息流出现 `Tool call mcp__exa__*` 卡片（含参数）→ 回复与统计（轮/步/耗时）→ 落盘会话日志与 mock 请求双重印证；UI 的"选择工作区"输入框是 `readOnly`，需先经目录选择器
-- **快速会话核验**：Web UI 点「Session log」导出 zip 即得**明文** `session.jsonl`，免去多帧 zstd 解压；也可作为会话导出功能的验收点（见 2.5）
-- **`agent_run` 实测要点**：需 API key + `?tools=` 白名单；返回 `runId`（`agent_run_*`）支持续跑；`outputSchema` 可约束输出（`structured` + `grounding` 引用回传）；匿名白名单调用会报 `-32000 Authentication required`；实调用按用量计费（本工程仅跑 1 次最小任务，12.1s 完成）
+- **`agent_run` 实测要点**：需 API key + `?tools=` 白名单；返回 `runId`（`agent_run_*`）支持续跑；`outputSchema` 可约束输出（`structured` + `grounding` 引用回传）；匿名白名单调用报 `-32000 Authentication required`；实调用按用量计费（本工程仅跑 1 次最小任务，12.1s 完成）
 
 ### 4.3 安全与隔离原则
 

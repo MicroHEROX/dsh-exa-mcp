@@ -43,7 +43,7 @@
 
 ## 3. 工具接口（模型可见）
 
-命名：`mcp__exa__<rawName>`。匿名层实测为 2 个；有 key 后可经 `?tools=` 白名单启用更多。
+命名：`mcp__exa__<rawName>`。默认（匿名或有 key）均为 2 个基础工具；可选工具经 `?tools=` 白名单启用（详见 [SOLUTIONS.md 1.4](SOLUTIONS.md)）。
 
 ### 3.1 `mcp__exa__web_search_exa`（匿名可用，实测）
 
@@ -85,15 +85,15 @@
 
 ### 3.3 `mcp__exa__web_search_advanced_exa`（2026-08-14 实测通过）
 
-- 高级筛选搜索：**匿名也可用**（白名单即启用，无需 key）；实测 27 个参数：`query`/`numResults`/`type`/`category`/`includeDomains`/`excludeDomains`/`startPublishedDate`/`endPublishedDate`/`startCrawlDate`/`endCrawlDate`/`includeText`/`excludeText`/`userLocation`/`moderation`/`additionalQueries`/`textMaxCharacters`/`contextMaxCharacters`/`enableSummary`/`summaryQuery`/`enableHighlights`/`highlightsMaxCharacters`/`highlightsNumSentences`/`highlightsPerUrl`/`highlightsQuery`/`maxAgeHours`/`livecrawlTimeout`/`subpages`/`subpageTarget`
-- 经 `?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa` 白名单启用；返回带 `requestId`/`resolvedSearchType`/`results[]`
+- 高级筛选搜索：**匿名也可用**（白名单即启用，无需 key）；经 `?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa` 启用；返回带 `requestId`/`resolvedSearchType`/`results[]`
+- 参数（实测 27 个）：`query`/`numResults`/`type`/`category`；域名：`includeDomains`/`excludeDomains`；时间：`startPublishedDate`/`endPublishedDate`/`startCrawlDate`/`endCrawlDate`/`maxAgeHours`；文本：`includeText`/`excludeText`/`textMaxCharacters`/`contextMaxCharacters`；摘要/高亮：`enableSummary`/`summaryQuery`/`enableHighlights`/`highlightsMaxCharacters`/`highlightsNumSentences`/`highlightsPerUrl`/`highlightsQuery`；其他：`userLocation`/`moderation`/`additionalQueries`/`livecrawlTimeout`/`subpages`/`subpageTarget`
 - 来源：[Exa MCP 文档](https://exa.ai/docs/reference/exa-mcp)
 
 ### 3.4 `mcp__exa__agent_run`（需鉴权 + 白名单，2026-08-14 实测通过）
 
-- 多步自主研究 agent；`?tools=` 白名单启用（`web_search_exa,web_fetch_exa,agent_run`）；匿名调用报 `-32000 Authentication required`
+- 多步自主研究 agent；`?tools=` 白名单启用（`web_search_exa,web_fetch_exa,agent_run`）；匿名调用报 `-32000 Authentication required`；**按用量计费**
 - Schema 要点（实测）：`query`（必填其一）/ `runId`（`agent_run_*`，续跑同一次运行）/ `systemPrompt` / `outputSchema`（约束输出）/ `input`（`data`/`exclusion` 数组）
-- 行为（实测）：返回 `{success, id, status, outputReady, output}`；`output.structured` 按 `outputSchema` 输出，`output.grounding` 带引用（URL/title/confidence）；任务耗时数秒至数分钟（实测最小任务 12.1s）；**按用量计费**
+- 行为（实测）：返回 `{success, id, status, outputReady, output}`；`output.structured` 按 `outputSchema` 输出，`output.grounding` 带引用（URL/title/confidence）；任务耗时数秒至数分钟（实测最小任务 12.1s）
 - 来源：[Exa MCP 文档](https://exa.ai/docs/reference/exa-mcp)
 
 ## 4. 运行时接口（dsh 侧可观察面）
@@ -116,11 +116,4 @@
 
 ## 6. 版本
 
-| 组件 | 版本 |
-|---|---|
-| `dsh-exa-mcp` | **0.1.0**（npm 名与 GitHub 仓库名一致；Releases 标签同步） |
-| `@deepseek-ai/dsh`（CLI） | ≥ 0.1.0-rc.5；实测 0.1.0-rc.6 |
-| `@deepseek-ai/dsh-mcp-client` | ^0.1.0-rc.6（CLI 随附，解析自 dsh 安装） |
-| Exa MCP 端点服务端 | 3.2.1（2026-08-14 实测 `initialize` 返回） |
-| MCP 协议版本 | 2025-06-18 |
-| Node.js | 实测 v24.16.0（建议 ≥ 22） |
+各组件版本与适配矩阵见 **[PROJECT.md §7 版本兼容](PROJECT.md)**（本表不重复维护）。

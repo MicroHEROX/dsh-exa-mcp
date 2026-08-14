@@ -21,7 +21,7 @@
 | 事件（event） | 类型化广播；会话事件持久化为 session log，代理事件实时分发 | [events.md](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/framework/events.md) |
 | 效果（effect） | 插件在 ctx 上注册的可逆副作用，插件卸载时自动回滚 | [cordis-primer](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/cordis-primer.md) |
 | HMR | 热替换：编辑配置后无需重启进程即可重载插件 | [publish.md](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md) |
-| session log | 追加式会话事件日志（`session.jsonl.zstd`，多帧 zstd 压缩），模型上下文的事实来源 | [architecture.md#session-log](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md) |
+| session log | 追加式会话事件日志（`session.jsonl.zstd`，多帧 zstd 压缩），模型上下文的事实来源；Web UI 可导出明文 zip | [architecture.md#session-log](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md) |
 | tool registry | 工具注册表 `ctx.tools`；模型可见工具即注册于其中的定义 | [tools.md](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/tools.md) |
 | seam（能力缝） | 可替换能力的三件套：服务定义 + 服务提供者 + 消费者 | [capability-seams.md](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/capability-seams.md) |
 | LLM adapter | 模型适配器（如 `@deepseek-ai/dsh-llm-deepseek`），注册在 `ctx.llm` | [llm-streaming.md](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/llm-streaming.md) |
@@ -54,14 +54,14 @@
 |---|---|---|
 | Exa | 网页搜索/抓取服务提供商 | <https://exa.ai> |
 | `mcp.exa.ai/mcp` | Exa 托管的 MCP 端点（Streamable HTTP） | [Exa MCP 文档](https://exa.ai/docs/reference/exa-mcp) |
-| 免费额度（free tier） | 匿名使用，限流（429），仅 `web_search_exa` + `web_fetch_exa` | [exa-mcp-server](https://github.com/exa-labs/exa-mcp-server) |
+| 免费额度（free tier） | 匿名使用，限流（429），默认仅 `web_search_exa` + `web_fetch_exa` | [exa-mcp-server](https://github.com/exa-labs/exa-mcp-server) |
 | API Key | `https://dashboard.exa.ai/api-keys` 申请；经 `x-api-key` / `Authorization: Bearer` / `?exaApiKey=` 传递 | 同上 |
 | OAuth | 托管端点的登录流程（`?login`），dsh 桥不支持 | 同上 |
 | `web_search_exa` | 基础搜索工具（query + numResults） | 本插件实测 schema，见 [API.md](API.md) |
 | `web_fetch_exa` | 网页全文抓取工具（urls 数组 + maxCharacters） | 同上 |
-| `web_search_advanced_exa` | 高级搜索（需鉴权，可用 `?tools=` 白名单启用） | [Exa MCP 文档](https://exa.ai/docs/reference/exa-mcp) |
-| `agent_run` | Exa Agent 多步研究（需鉴权 + `?tools=` 启用） | 同上 |
-| `?tools=` / `?defaultSearchType=` | MCP URL 查询参数：工具白名单 / 默认检索模式 | 同上 |
+| `web_search_advanced_exa` | 高级筛选搜索（27 参数）；**匿名也可用**，需 `?tools=` 白名单启用 | 实测见 [API.md](API.md) |
+| `agent_run` | Exa Agent 多步研究；需鉴权（API key/OAuth）+ `?tools=` 启用，按用量计费 | 实测见 [API.md](API.md) |
+| `?tools=` / `?defaultSearchType=` | MCP URL 查询参数：工具白名单 / 默认检索模式 | [Exa MCP 文档](https://exa.ai/docs/reference/exa-mcp) |
 
 ## 四、本插件约定
 

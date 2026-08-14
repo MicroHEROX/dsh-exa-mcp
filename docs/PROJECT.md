@@ -61,7 +61,7 @@ dsh-exa-mcp/
 | 按 id 覆盖（`mcp-exa`） | [publish.md 加载顺序](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md) |
 | 工具命名 `mcp__<serverName>__<rawName>` | [mcp-client README#Tool-naming](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/mcp/mcp-client/README.md) |
 
-已实测通过的真实 CLI 验证（dsh 0.1.0-rc.6）：`--dump-config` 合成、headless 全链路调用、web 启动、安装/卸载/重装（详见 [SOLUTIONS.md](SOLUTIONS.md#4-验证方法论)）。
+已实测通过（dsh 0.1.0-rc.6）：dump-config 合成、headless/web 全链路、安装/卸载/重装、真实 key 工具调用（详见 [SOLUTIONS.md 四、验证方法论](SOLUTIONS.md)）。
 
 ## 5. 开发与构建
 
