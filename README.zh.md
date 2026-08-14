@@ -114,6 +114,35 @@ $env:EXA_API_KEY = "your-key"        # Windows PowerShell
 | bundle 已装又叠加同一 `--patch` | dsh 会 fail loud：`duplicate loader entry id: mcp-exa`——二选一 |
 | 把 key 写进 patch 文件 | key 属于环境变量；提交 key 即泄露 |
 
+## 卸载
+
+**Bundle 安装**（经 `dsh plugin add` 安装的）：
+
+```sh
+dsh plugin --profile <name> remove dsh-exa-mcp
+```
+
+验证无残留：
+
+```sh
+dsh --profile <name> --dump-config | grep -c "dsh-exa-mcp"   # 期望 0
+```
+
+> 若在**网络不稳**时经 `github:` 安装，`remove` 可能残留悬空的 `dsh-exa-mcp` 条目于 `dsh.profile.bundles`，导致 profile 启动失败（`cannot resolve profile bundle "dsh-exa-mcp"`）。用下面命令移除该条目（node 写入，无 BOM）：
+>
+> ```sh
+> node -e "const fs=require('fs');const p=process.env.DSH_HOME+'/profiles/<name>/package.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.dsh.profile.bundles=(j.dsh.profile.bundles||[]).filter(b=>b!=='dsh-exa-mcp');fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n','utf8')"
+> ```
+
+**Overlay / 手动方式**（未装 bundle）：
+
+- `--patch` overlay：从启动命令中去掉 `--patch <path>/cordis.patch.yml` 参数即可——不产生任何持久残留
+- 合并进 profile patch 文件的：从 `$DSH_HOME/profiles/<name>/cordis.patch.yml`（或 `$DSH_HOME/cordis.patch.yml`，对全部 profile 生效）中删除 `mcp-exa` 块（或整个 `insert` 列表）
+
+可选：不再使用 Exa 时，从环境中移除 `EXA_API_KEY`。
+
+卸载不会触碰 deepseek-harness 安装或其他任何 bundle——只编辑 `$DSH_HOME` 下的 profile 目录。
+
 ---
 
 ## 版本兼容

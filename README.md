@@ -114,6 +114,35 @@ The plugin **auto-detects** the key at load time: `EXA_API_KEY` set → sends `x
 | Using the same patch twice (bundle installed **and** `--patch`) | dsh fails loud with `duplicate loader entry id: mcp-exa` — pick one method |
 | API key in patch files | Keys belong in environment variables; committing them is a leak |
 
+## Uninstall
+
+**Bundle installs** (installed via `dsh plugin add`):
+
+```sh
+dsh plugin --profile <name> remove dsh-exa-mcp
+```
+
+Verify nothing remains:
+
+```sh
+dsh --profile <name> --dump-config | grep -c "dsh-exa-mcp"   # expect 0
+```
+
+> If installed from a `github:` spec during an unstable network window, `remove` can leave a dangling `dsh-exa-mcp` entry in `dsh.profile.bundles`, which makes the profile fail to boot with `cannot resolve profile bundle "dsh-exa-mcp"`. Fix by removing the entry (node, no BOM):
+>
+> ```sh
+> node -e "const fs=require('fs');const p=process.env.DSH_HOME+'/profiles/<name>/package.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.dsh.profile.bundles=(j.dsh.profile.bundles||[]).filter(b=>b!=='dsh-exa-mcp');fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n','utf8')"
+> ```
+
+**Overlay / manual installs** (no bundle):
+
+- `--patch` overlays: just drop the `--patch <path>/cordis.patch.yml` flag from your start command — nothing persists.
+- Patch merged into a profile file: delete the `mcp-exa` block (or the whole `insert` list) from `$DSH_HOME/profiles/<name>/cordis.patch.yml`, or `$DSH_HOME/cordis.patch.yml` for every profile.
+
+Optional: unset `EXA_API_KEY` in your environment if you no longer use Exa.
+
+Uninstalling never touches your deepseek-harness installation or any other bundle — it only edits the profile directory under `$DSH_HOME`.
+
 ---
 
 ## Version Compatibility
