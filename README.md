@@ -36,7 +36,7 @@ dsh plugin --profile web add github:MicroHEROX/dsh-exa-mcp
 dsh web
 ```
 
-> **Verify after a `github:` install** — dsh 0.1.0-rc.6 has a known CLI quirk where a `github:` (git) install links the package but does not append it to `dsh.profile.bundles` (local `link:`/`file:` installs are unaffected). Check and fix in one step:
+> **Verify after a `github:` install** — when the route to github.com is unstable, a `github:` (git) install can silently fail or finish with an un-synced `dsh.profile.bundles` (local `link:`/`file:` installs are unaffected). Verify and fix in one step:
 >
 > ```sh
 > # check: does the bundle layer appear?
@@ -45,7 +45,7 @@ dsh web
 > node -e "const fs=require('fs');const p=process.env.DSH_HOME+'/profiles/web/package.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));if(!(j.dsh.profile.bundles||[]).includes('dsh-exa-mcp')){j.dsh.profile.bundles=[...(j.dsh.profile.bundles||[]),'dsh-exa-mcp'];fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n','utf8');console.log('fixed: dsh-exa-mcp appended');}else{console.log('already present');}"
 > ```
 >
-> The issue is reported upstream ([Discussions #656](https://github.com/deepseek-ai/deepseek-harness/discussions/656)); `--patch` overlays are never affected.
+> The timing issue is reported upstream ([Discussions #656](https://github.com/deepseek-ai/deepseek-harness/discussions/656)); `--patch` overlays are never affected.
 
 **Option B — one-off overlay, no install:**
 

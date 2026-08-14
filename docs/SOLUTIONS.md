@@ -46,14 +46,13 @@
 - **解决**：`npm install -g pnpm`；或走 `--patch` / 合并 profile patch 的免安装路线
 - **官方文档**：[publish.md](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)
 
-### 1.7 `dsh plugin add` 偶发 manifest 未更新（git 协议复现确认）
+### 1.7 `dsh plugin add`（github: 协议）偶发不生效——网络抖动时序
 
-- **现象**：`dsh plugin --profile <p> add github:MicroHEROX/dsh-exa-mcp` 后 pnpm 链接成功、`dependencies` 已写入，但 `dsh.profile.bundles` **未追加**（`--dump-config` 无 bundle 层）；`link:` 本地路径方式正常
-- **连带影响**：`remove` 时同样不收敛——依赖已删但 `bundles` 残留悬空引用，**profile 启动/`--dump-config` 直接报 `cannot resolve profile bundle "dsh-exa-mcp"` 失败**（实测确认）
-- **原因**：CLI 的 `reconcilePlugins` 依赖 `exportsPatch()`（`resolveBundleDir` 解析已安装包）判断追加/移除；对 git 协议安装的包解析失败返回 false，并打印一条易被忽略的 warning（`declares no dsh.bundle`）
-- **解决**：手动维护 `dsh.profile.bundles`（node 无 BOM 重写 package.json，勿用 PowerShell `ConvertTo-Json`——会写 UTF-8 BOM，dsh 的 JSON 解析会报 `SyntaxError: Unexpected token`）；或改用 `--patch` overlay
-- **修复命令**（README 安装节提供）：验证 + 追加 + 清理的一行 node 命令
-- **实测**：dsh 0.1.0-rc.6 + pnpm 11.21，github: 协议 add/remove 均不收敛；link: 协议正常（CLI 自身 bug，非插件问题；已上报官方 Discussions #656）
+- **现象**：`dsh plugin --profile <p> add github:MicroHEROX/dsh-exa-mcp` 偶发：依赖未写入、或已写入但 `dsh.profile.bundles` 未追加；`remove` 后偶发 bundles 残留悬空引用导致 `cannot resolve profile bundle` 启动失败
+- **根因（实测定位）**：**不是插件问题，也不是 CLI 稳定 bug**——github.com 网络抖动（ECONNRESET/ETIMEDOUT 的 git HEAD 探测重试）窗口内：① pnpm 可能安装失败（`dsh` 只在 stderr 打一行 `pnpm failed`，易被忽略）；② pnpm 输出 Done 但 git checkout 仍在异步落地，`reconcilePlugins` 跑在空 node_modules 上 → 不追加，此后不再补偿；③ 中途失败回滚 manifest 依赖项
+- **对照实测**：网络正常时（5s 完成）add/remove/reconcile **全流程正确**（bundles 追加/移除、node_modules 干净）；`link:`/`file:` 本地安装无网络依赖，始终正常
+- **解决/健壮性建议**：① 网络不稳时优先 `--patch` overlay 或本地路径安装；② github: 安装后按 README 提供的一行命令**验证并修复** manifest；③ 已上报官方建议（Discussions #656：reconcile 等待 git checkout 落地、pnpm 失败提示更醒目）
+- **附带坑**：手动维护 manifest 用 node 无 BOM 写入（PowerShell `ConvertTo-Json` 会写 UTF-8 BOM，见 1.9）
 
 ### 1.8 有 key 但工具集不变（白名单是必须的）
 

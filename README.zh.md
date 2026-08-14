@@ -36,7 +36,7 @@ dsh plugin --profile web add github:MicroHEROX/dsh-exa-mcp
 dsh web
 ```
 
-> **`github:` 安装后请验证** —— dsh 0.1.0-rc.6 存在已知 CLI 问题：`github:`（git 协议）安装只链接依赖、不追加 `dsh.profile.bundles`（本地 `link:`/`file:` 安装不受影响）。一键检查并修复：
+> **`github:` 安装后请验证** —— 当到 github.com 的网络不稳定时，`github:`（git 协议）安装可能静默失败或完成后 `dsh.profile.bundles` 未同步（本地 `link:`/`file:` 安装不受影响）。一键检查并修复：
 >
 > ```sh
 > # 检查：bundle 层是否出现
@@ -45,7 +45,7 @@ dsh web
 > node -e "const fs=require('fs');const p=process.env.DSH_HOME+'/profiles/web/package.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));if(!(j.dsh.profile.bundles||[]).includes('dsh-exa-mcp')){j.dsh.profile.bundles=[...(j.dsh.profile.bundles||[]),'dsh-exa-mcp'];fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n','utf8');console.log('fixed: dsh-exa-mcp appended');}else{console.log('already present');}"
 > ```
 >
-> 该问题已上报官方（[Discussions #656](https://github.com/deepseek-ai/deepseek-harness/discussions/656)）；`--patch` overlay 不受影响。
+> 该时序问题已反馈官方（[Discussions #656](https://github.com/deepseek-ai/deepseek-harness/discussions/656)）；`--patch` overlay 不受影响。
 
 **方式 B —— 一次性 overlay，不安装：**
 
