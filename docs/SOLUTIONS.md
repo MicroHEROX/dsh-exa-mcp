@@ -99,6 +99,13 @@
 - **解决**：改用 API key（`x-api-key` header）
 - **官方文档**：[mcp-client README#Known-Limitations](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/mcp/mcp-client/README.md)
 
+### 2.5 Web UI「Session log」面板会触发会话导出下载
+
+- **现象**：点击 Web UI 顶部的 **Session log** 按钮后，浏览器自动下载 `dsh-session-session-<uuid>.zip` 到下载目录
+- **原因**：dsh 自带的会话导出功能（导出当前会话为 zip，内含**明文** `session.jsonl`），非异常行为
+- **解决/利用**：无需处理；可用于快速核对会话内容——导出物是明文 jsonl，**免去多帧 zstd 解压**（见 4.2）
+- **实测**：dsh 0.1.0-rc.6 Web UI，导出内容与落盘会话日志一致，无敏感数据（key 零泄漏）
+
 ## 三、工程环境类（Windows 开发坑）
 
 ### 3.1 PowerShell 5.1 读 UTF-8 无 BOM 脚本乱码
@@ -148,6 +155,7 @@
 - **注意**：`session.jsonl.zstd` 是**多帧** zstd——Node `zstdDecompressSync` 只解第一帧；用 python `zstandard` 的 `stream_reader` 或流式 API 解全部帧（本工程踩过）
 - **A/B 鉴权测试**：伪 key → Exa `401 Invalid API key`，与匿名成功对照，证明 header 路径
 - **web UI 全交互**（WebBridge 驱动真实浏览器）：选工作区 → 发消息 → UI 消息流出现 `Tool call mcp__exa__*` 卡片（含参数）→ 回复与统计（轮/步/耗时）→ 落盘会话日志与 mock 请求双重印证；UI 的"选择工作区"输入框是 `readOnly`，需先经目录选择器
+- **快速会话核验**：Web UI 点「Session log」导出 zip 即得**明文** `session.jsonl`，免去多帧 zstd 解压；也可作为会话导出功能的验收点（见 2.5）
 - **`agent_run` 实测要点**：需 API key + `?tools=` 白名单；返回 `runId`（`agent_run_*`）支持续跑；`outputSchema` 可约束输出（`structured` + `grounding` 引用回传）；匿名白名单调用会报 `-32000 Authentication required`；实调用按用量计费（本工程仅跑 1 次最小任务，12.1s 完成）
 
 ### 4.3 安全与隔离原则
