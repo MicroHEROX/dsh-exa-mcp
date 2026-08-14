@@ -93,8 +93,18 @@ npm pack          # 产出 dsh-exa-mcp-0.1.0.tgz
 
 ## 7. 版本兼容
 
-- 依赖 dsh CLI 自带 `@deepseek-ai/dsh-mcp-client`（0.1.0-rc.5 起随 CLI 发布）
-- dsh 处于 developer preview，破坏性变更可能发生；升级 dsh 后建议重跑 [SOLUTIONS.md](SOLUTIONS.md#2-验证清单) 的验证清单
+| 组件 | 版本 | 说明 |
+|---|---|---|
+| `dsh-exa-mcp` | **0.1.0** | 语义化版本；破坏性变更走 minor 升版 |
+| `@deepseek-ai/dsh`（CLI） | **≥ 0.1.0-rc.5**，实测 **0.1.0-rc.6** | 0.1.0-rc.5 起随 CLI 附带 `@deepseek-ai/dsh-mcp-client` |
+| `@deepseek-ai/dsh-mcp-client` | `^0.1.0-rc.6`（由 CLI 解析） | 无需声明依赖 |
+| Exa MCP 端点 | server 3.2.1（2026-08-14 实测） | Exa 托管，可能变化；以 `tools/list` 返回为准 |
+| MCP 协议 | 2025-06-18 | 自动协商 |
+| Node.js | 实测 v24.16.0；建议 ≥ 22 | dsh 无 engines 声明 |
+| 平台 | Windows / macOS / Linux | 纯配置，无平台代码 |
+
+- dsh 处于 developer preview，可能发生破坏性变更；升级 dsh 后建议重跑 [SOLUTIONS.md](SOLUTIONS.md) 的验证清单
+- 本插件版本记录于 GitHub Releases 标签，与 `package.json` 的 `version` 一致
 
 ## 8. 相关链接
 

@@ -105,6 +105,20 @@ The plugin **auto-detects** the key at load time: `EXA_API_KEY` set → sends `x
 
 ---
 
+## Version Compatibility
+
+| Component | Version | Notes |
+|---|---|---|
+| `dsh-exa-mcp` (this plugin) | **0.1.0** | See [releases](https://github.com/MicroHEROX/dsh-exa-mcp/releases) |
+| DeepSeek Harness CLI (`@deepseek-ai/dsh`) | **≥ 0.1.0-rc.5**, tested on **0.1.0-rc.6** | The CLI ships the `@deepseek-ai/dsh-mcp-client` bridge this bundle mounts |
+| MCP bridge (`@deepseek-ai/dsh-mcp-client`) | `^0.1.0-rc.6` (resolved from the dsh CLI) | No separate install needed |
+| Exa MCP endpoint (`mcp.exa.ai/mcp`) | server **3.2.1** (probed 2026-08-14) | Exa-managed; may change without notice |
+| MCP protocol version | `2025-06-18` | Negotiated automatically |
+| Node.js | tested on **v24.16.0**; Node ≥ 22 recommended | dsh itself does not declare an `engines` range |
+| Platform | Windows / macOS / Linux | Config-only bundle; no platform-specific code |
+
+dsh is in developer preview and iterates rapidly. After upgrading `dsh`, re-run the verification steps from [docs/SOLUTIONS.md](docs/SOLUTIONS.md).
+
 ## Security
 
 - The only secret involved is `EXA_API_KEY`, read from the environment at load time; it is sent to Exa as the `x-api-key` header and never written to any file by this plugin.

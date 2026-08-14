@@ -113,5 +113,11 @@
 
 ## 6. 版本
 
-- `dsh-exa-mcp`：0.1.0（npm 名与 GitHub 仓库名一致）
-- 依赖：dsh CLI ≥ 0.1.0-rc.5（随 CLI 提供 `@deepseek-ai/dsh-mcp-client`）
+| 组件 | 版本 |
+|---|---|
+| `dsh-exa-mcp` | **0.1.0**（npm 名与 GitHub 仓库名一致；Releases 标签同步） |
+| `@deepseek-ai/dsh`（CLI） | ≥ 0.1.0-rc.5；实测 0.1.0-rc.6 |
+| `@deepseek-ai/dsh-mcp-client` | ^0.1.0-rc.6（CLI 随附，解析自 dsh 安装） |
+| Exa MCP 端点服务端 | 3.2.1（2026-08-14 实测 `initialize` 返回） |
+| MCP 协议版本 | 2025-06-18 |
+| Node.js | 实测 v24.16.0（建议 ≥ 22） |

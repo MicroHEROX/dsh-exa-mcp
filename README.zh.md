@@ -105,6 +105,22 @@ $env:EXA_API_KEY = "your-key"        # Windows PowerShell
 
 ---
 
+## 版本兼容
+
+| 组件 | 版本 | 说明 |
+|---|---|---|
+| `dsh-exa-mcp`（本插件） | **0.1.0** | 见 [Releases](https://github.com/MicroHEROX/dsh-exa-mcp/releases) |
+| DeepSeek Harness CLI（`@deepseek-ai/dsh`） | **≥ 0.1.0-rc.5**，实测 **0.1.0-rc.6** | CLI 随附本 bundle 挂载的 `@deepseek-ai/dsh-mcp-client` 桥 |
+| MCP 桥（`@deepseek-ai/dsh-mcp-client`） | `^0.1.0-rc.6`（由 dsh CLI 解析） | 无需单独安装 |
+| Exa MCP 端点（`mcp.exa.ai/mcp`） | 服务端 **3.2.1**（2026-08-14 实测） | 由 Exa 维护，可能随时变化 |
+| MCP 协议版本 | `2025-06-18` | 自动协商 |
+| Node.js | 实测 **v24.16.0**；建议 ≥ 22 | dsh 本身未声明 `engines` 范围 |
+| 平台 | Windows / macOS / Linux | 纯配置 bundle，无平台差异代码 |
+
+dsh 处于 developer preview，迭代较快。升级 dsh 后请重跑 [docs/SOLUTIONS.md](docs/SOLUTIONS.md) 的验证清单。
+
+---
+
 ## 安全
 
 - 唯一涉及的密钥是 `EXA_API_KEY`：加载时从环境读取，以 `x-api-key` 头发给 Exa，本插件不落盘任何文件
