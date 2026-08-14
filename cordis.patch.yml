@@ -1,0 +1,33 @@
+# dsh-exa-mcp: the Exa MCP endpoint as a deepseek-harness bundle.
+#
+# This layer inserts a single row that connects to the hosted Exa MCP server
+# (https://mcp.exa.ai/mcp, Streamable HTTP) through the mcp-client bridge the
+# dsh CLI ships with (@deepseek-ai/dsh-mcp-client). The server's tools are
+# registered on ctx.tools under the `exa` namespace:
+#   mcp__exa__web_search_exa
+#   mcp__exa__web_fetch_exa
+#   mcp__exa__web_search_advanced_exa
+#   mcp__exa__agent_run
+#   ...
+#
+# Authentication: the hosted endpoint works anonymously on Exa's free tier
+# (rate-limited). Setting EXA_API_KEY in the environment opts into your own
+# key, which lifts the limits and is required for the Agent tool
+# (agent_run). The headers expression attaches the key only when the
+# variable is present, so an unset variable falls back to the free tier
+# instead of sending a bogus header. OAuth (https://mcp.exa.ai/mcp?login) is
+# not supported by the mcp-client bridge; use the API key instead.
+#
+# Override per deployment by patching this row by id (`mcp-exa`) from a
+# later layer (profile cordis.patch.yml or --patch), e.g. to whitelist
+# tools with the server's ?tools= query parameter or to change the default
+# search type with ?defaultSearchType=.
+- insert:
+    - id: mcp-exa
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: exa
+        transport: streamable-http
+        url: https://mcp.exa.ai/mcp
+        headers: !!js 'process.env.EXA_API_KEY ? { "x-api-key": process.env.EXA_API_KEY } : {}'
+        toolCallTimeoutMs: 180000
