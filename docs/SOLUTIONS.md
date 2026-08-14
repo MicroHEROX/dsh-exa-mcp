@@ -147,6 +147,8 @@
 - **会话日志即真相**：`tool/call`（`data.name`/`data.arguments`）、`tool/result`（文本 + `isError`）结构化断言
 - **注意**：`session.jsonl.zstd` 是**多帧** zstd——Node `zstdDecompressSync` 只解第一帧；用 python `zstandard` 的 `stream_reader` 或流式 API 解全部帧（本工程踩过）
 - **A/B 鉴权测试**：伪 key → Exa `401 Invalid API key`，与匿名成功对照，证明 header 路径
+- **web UI 全交互**（WebBridge 驱动真实浏览器）：选工作区 → 发消息 → UI 消息流出现 `Tool call mcp__exa__*` 卡片（含参数）→ 回复与统计（轮/步/耗时）→ 落盘会话日志与 mock 请求双重印证；UI 的"选择工作区"输入框是 `readOnly`，需先经目录选择器
+- **`agent_run` 实测要点**：需 API key + `?tools=` 白名单；返回 `runId`（`agent_run_*`）支持续跑；`outputSchema` 可约束输出（`structured` + `grounding` 引用回传）；匿名白名单调用会报 `-32000 Authentication required`；实调用按用量计费（本工程仅跑 1 次最小任务，12.1s 完成）
 
 ### 4.3 安全与隔离原则
 
