@@ -18,10 +18,20 @@
 # instead of sending a bogus header. OAuth (https://mcp.exa.ai/mcp?login) is
 # not supported by the mcp-client bridge; use the API key instead.
 #
-# Override per deployment by patching this row by id (`mcp-exa`) from a
-# later layer (profile cordis.patch.yml or --patch), e.g. to whitelist
+# Override per deployment from a later layer (profile cordis.patch.yml or
+# --patch) by referencing this row's id WITHOUT `insert` — the loader treats
+# an id+name+config patch as an override (an `insert` with the same id would
+# crash the loader with "duplicate loader entry id"), e.g. to whitelist
 # tools with the server's ?tools= query parameter or to change the default
-# search type with ?defaultSearchType=.
+# search type with ?defaultSearchType=:
+#
+#   - id: mcp-exa
+#     name: '@deepseek-ai/dsh-mcp-client'
+#     config:
+#       serverName: exa
+#       transport: streamable-http
+#       url: https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa
+#
 - insert:
     - id: mcp-exa
       name: '@deepseek-ai/dsh-mcp-client'
