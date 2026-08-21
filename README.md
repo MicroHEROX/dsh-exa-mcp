@@ -150,8 +150,8 @@ Uninstalling never touches your deepseek-harness installation or any other bundl
 | Component | Version | Notes |
 |---|---|---|
 | `dsh-exa-mcp` (this plugin) | **0.1.0** | See [releases](https://github.com/MicroHEROX/dsh-exa-mcp/releases) |
-| DeepSeek Harness CLI (`@deepseek-ai/dsh`) | **≥ 0.1.0-rc.5**, tested on **0.1.0-rc.8** | The CLI ships the `@deepseek-ai/dsh-mcp-client` bridge this bundle mounts |
-| MCP bridge (`@deepseek-ai/dsh-mcp-client`) | `^0.1.0-rc.8` (resolved from the dsh CLI) | No separate install needed |
+| DeepSeek Harness CLI (`@deepseek-ai/dsh`) | **≥ 0.1.0-rc.5**, tested on **0.1.0-rc.8 / 0.1.1-rc.1** | The CLI ships the `@deepseek-ai/dsh-mcp-client` bridge this bundle mounts |
+| MCP bridge (`@deepseek-ai/dsh-mcp-client`) | `^0.1.0-rc.8` / `^0.1.1-rc.1` (resolved from the dsh CLI) | No separate install needed |
 | Exa MCP endpoint (`mcp.exa.ai/mcp`) | server **3.2.1** (probed 2026-08-14) | Exa-managed; may change without notice |
 | MCP protocol version | `2025-06-18` | Negotiated automatically |
 | Node.js | tested on **v24.16.0**; Node ≥ 22 recommended | dsh itself does not declare an `engines` range |
