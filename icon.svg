@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="36" height="36" role="img" aria-label="Exa web search">
+  <defs>
+    <linearGradient id="exa-lens" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+  <circle cx="15" cy="15" r="8.2" fill="none" stroke="url(#exa-lens)" stroke-width="2.8"/>
+  <path d="M21 21 L30 30" fill="none" stroke="#7C3AED" stroke-width="3" stroke-linecap="round"/>
+  <path d="M15 9.2 L16.1 12.4 L19.3 13.5 L16.1 14.6 L15 17.8 L13.9 14.6 L10.7 13.5 L13.9 12.4 Z" fill="#DB2777"/>
+</svg>

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Exa web search",
+    "description": "Mounts Exa's hosted MCP endpoint so the agent can search the web and fetch full page text through the mcp__exa__ tools. Anonymous access is rate-limited; set EXA_API_KEY for higher limits and advanced tools."
+  }
+}

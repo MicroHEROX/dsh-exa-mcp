@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Exa 联网搜索",
+    "description": "挂载 Exa 托管的 MCP 端点，把神经网页搜索与全文抓取注册为 mcp__exa__ 工具。匿名档有限流；设置 EXA_API_KEY 可提高额度并启用高级工具。"
+  }
+}

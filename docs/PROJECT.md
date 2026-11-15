@@ -1,32 +1,37 @@
 # dsh-exa-mcp 工程文档
 
-> 面向 DeepSeek Harness（`dsh`）的第三方 Exa 搜索插件。本文档描述工程结构、规范符合性、验证方法与发布流程。
+> 面向 DeepSeek Harness（`dsh`）的第三方 Exa 搜索 bundle。当前版本 **0.2.0**，按 **dsh 0.2.2-rc.3** 实测整理。本文描述工程结构、规范符合性、验证方法与发布流程；配置字段与工具接口见 [API.md](API.md)，坑与验证细节见 [SOLUTIONS.md](SOLUTIONS.md)。
 
 ## 1. 项目定位
 
-- **类型**：第三方插件 bundle（纯配置型，无运行时代码）
-- **功能**：通过 dsh 自带的 MCP 客户端桥（`@deepseek-ai/dsh-mcp-client`）连接托管 Exa MCP 端点（`https://mcp.exa.ai/mcp`，Streamable HTTP），将 Exa 工具以 `mcp__exa__*` 命名注册为模型可用工具
-- **不做什么**：不修改任何 deepseek-harness 安装文件；不在进程内运行第三方代码；不接管 Exa 的账号、计费与鉴权（由用户通过环境变量提供）
+- **类型**：第三方插件 bundle，纯配置，无运行时代码；附带插件管理器使用的 locale 与图标。
+- **功能**：通过 dsh 自带的 `@deepseek-ai/dsh-mcp-client` 连接 Exa 托管 MCP 端点（`https://mcp.exa.ai/mcp`，Streamable HTTP），把 Exa 工具注册为 `mcp__exa__*`。
+- **不做什么**：不在 dsh 进程内运行第三方代码；不接管 Exa 账号、计费或鉴权；不实现 OAuth；不修改 dsh 安装目录。
 
 ## 2. 目录结构
 
-```
+```text
 dsh-exa-mcp/
-├── package.json          # npm 包 + dsh bundle 清单（dsh.bundle.patch）
+├── package.json          # npm 清单 + dsh.bundle.patch
 ├── cordis.patch.yml      # 唯一 patch 层：插入 mcp-exa 行
-├── README.md             # 英文使用说明
+├── locale/en.json        # 插件管理器显示名/描述（英文）
+├── locale/zh.json        # 插件管理器显示名/描述（中文）
+├── icon.svg              # 36×36 透明 SVG 图标
+├── README.md             # 英文使用说明（插件详情页的回退文档）
 ├── README.zh.md          # 中文使用说明
 ├── LICENSE               # MIT
 └── docs/
     ├── PROJECT.md        # 本文档
     ├── GLOSSARY.md       # 标准术语表
-    ├── API.md            # API 列表（配置接口 + 工具接口 + 运行时接口）
-    └── SOLUTIONS.md      # 解决方案文档（坑、疑难、方法论、官方文档地址）
+    ├── API.md            # 配置、工具与运行时接口
+    └── SOLUTIONS.md      # 坑、疑难与验证方法论
 ```
 
-## 3. 核心机制（单一职责）
+`package.json` 的 `files` 只打包运行时需要的文件：patch、locale、icon、README 与 LICENSE；`docs/` 随仓库分发，不进入用户运行环境。插件管理器未声明 `meta.detail`，详情页回退到 README。
 
-`cordis.patch.yml` 是插件的全部内容——一个 `insert` 块，插入一行 id 为 `mcp-exa` 的 mcp-client 实例：
+## 3. 核心机制
+
+`cordis.patch.yml` 的全部内容是一个 `insert` 块，插入 id 为 `mcp-exa` 的 mcp-client 实例：
 
 ```yaml
 - insert:
@@ -38,77 +43,102 @@ dsh-exa-mcp/
         url: https://mcp.exa.ai/mcp
         headers: !!js 'process.env.EXA_API_KEY ? { "x-api-key": process.env.EXA_API_KEY } : {}'
         toolCallTimeoutMs: 180000
+        failOnStartupError: false
 ```
 
 要点：
 
 | 字段 | 说明 |
 |---|---|
-| `name` | 解析到 dsh CLI 随附的 `@deepseek-ai/dsh-mcp-client`（无需声明依赖） |
-| `serverName: exa` | 工具命名空间，决定公开名 `mcp__exa__<tool>` |
-| `transport/url` | Exa 托管端点为 Streamable HTTP 协议 |
-| `headers` | 加载时求值的 `!!js` 表达式：有 `EXA_API_KEY` 自动附 `x-api-key`，无则空对象（匿名） |
-| `toolCallTimeoutMs` | 180 s，适配长耗时的 agent 研究任务 |
+| `name` | 解析到 dsh 随附的 `@deepseek-ai/dsh-mcp-client`，无需声明依赖 |
+| `serverName: exa` | 工具命名空间，决定 `mcp__exa__*` |
+| `transport/url` | Exa 托管端点使用 Streamable HTTP |
+| `headers` | 加载时求值：有 `EXA_API_KEY` → `x-api-key`；无 → `{}`（匿名），不发送 `undefined` |
+| `toolCallTimeoutMs` | 180 s，适配长耗时的研究调用 |
+| `failOnStartupError: false` | Exa 故障或离线不拒绝插件激活；桥记录错误并重连 |
 
-## 4. 规范符合性（依据 dsh 官方文档）
+`failOnStartupError` 设为 `true` 会让初始连接失败直接拒绝激活，便于把“没有 Exa 工具”当故障处理；本插件选择可降级启动。
 
-| 规范点 | 依据文档 |
+Web/Desktop profile 还会挂载 `@deepseek-ai/dsh-mcp-manager`，用于在设置中运行时增删 MCP server。固定 Exa 端点的部署仍适合普通 `mcp-client` 行；若同时在管理器里添加 Exa，必须使用不同的 `serverName`，否则同一作用域内命名冲突。
+
+## 4. 插件规范与显示资源
+
+| 规范点 | 本工程做法 |
 |---|---|
-| bundle 清单 `dsh.bundle.patch` | [publish.md](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md) |
-| patch YAML 方言（`entryListSchema` + `!!js`） | [cordis-primer.md#loader-configuration](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/cordis-primer.md) |
-| `!!js` 仅用于插件 `config`，元数据保持静态 | [verify-cordis-config](https://github.com/deepseek-ai/deepseek-harness/blob/master/scripts/verify-cordis-config.ts) 规则 |
-| mcp-client 配置契约 | [@deepseek-ai/dsh-mcp-client README](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/mcp/mcp-client/README.md) |
-| 按 id 覆盖（`mcp-exa`） | [publish.md 加载顺序](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md) |
-| 工具命名 `mcp__<serverName>__<rawName>` | [mcp-client README#Tool-naming](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/mcp/mcp-client/README.md) |
+| bundle 清单 | `package.json` 声明 `dsh.bundle.patch: "./cordis.patch.yml"` |
+| patch 方言 | 顶层数组 + `insert`；按 id 覆盖时不再写 `insert` |
+| `!!js` | 只用于插件 `config`（本工程仅 `headers`）；entry 元数据保持静态 |
+| 按 id 覆盖 | 目标 id `mcp-exa`；`config` 整体替换，不深合并 |
+| 工具命名 | `mcp__<serverName>__<rawName>` |
+| 显示元数据 | `locale/en.json`、`locale/zh.json` 的 `meta.title` / `meta.description`；`icon.svg` 通过 `./icon` 导出 |
+| 详情文档 | 不声明 `meta.detail`，使用 README 回退；未附带预览图，避免为详情页引入无实际内容的资源 |
+| 兼容声明 | 不声明 `engines.dsh`。本包设计上兼容 0.1.x 与 0.2.x 的配置契约，本次实测 0.2.2-rc.3；不写范围可避免 prerelease 版本被范围误挡。若将来声明，DSH 会先读 `engines.dsh` 再回退到 DSH peer 依赖 |
 
-已实测通过（dsh 0.1.0-rc.6）：dump-config 合成、headless/web 全链路、安装/卸载/重装、真实 key 工具调用（详见 [SOLUTIONS.md 四、验证方法论](SOLUTIONS.md)）。
+图标为原创 SVG：36×36 viewBox、透明背景、无 `<text>`、无脚本、无外链，符合插件管理器的图标格式与体积限制。
 
-## 5. 开发与构建
+## 5. 开发与验证
+
+无需构建。常用检查：
 
 ```sh
-# 无需构建：纯配置 bundle，无编译步骤
-# 本地冒烟（不安装）：
-dsh web --patch "$PWD/cordis.patch.yml"
-
-# 标准安装（需 pnpm）：
-npm install -g pnpm
-dsh plugin --profile web add ./dsh-exa-mcp
+dsh --version
+dsh --profile web --dump-config | grep -A8 "== dsh-exa-mcp"
+npm pack --dry-run          # 检查实际打包文件
 ```
+
+本地联调（未安装 bundle 时）：
+
+```sh
+dsh web --patch "$PWD/cordis.patch.yml"
+```
+
+验证分层：
+
+| 层 | 手段 | 证明什么 |
+|---|---|---|
+| 清单与资源 | JSON 解析、SVG 结构检查、`npm pack --dry-run` | 清单、locale、icon、`files` 正确 |
+| patch 语法 | YAML 解析；`dsh --dump-config` | 行完整、`!!js` 保留、按 id 合成 |
+| 端点 | MCP `initialize` + `tools/list` | 匿名工具集与服务器版本 |
+| 启动 | `dsh --profile web`（隔离 `DSH_HOME`） | mcp-client 连接与工具注册 |
+| 行为 | 会话日志中的 `tool/call` / `tool/result` | 真实调用、参数与错误路径 |
+| 生命周期 | 插件管理器安装/停用/卸载/重装 | 可逆性与残留 |
+
+界面渲染（插件详情页、图标、中英文标题）需要浏览器控制；无控制时只能核对资源与导出，不能宣称已渲染。
 
 ## 6. 发布
 
 ```sh
-npm pack          # 产出 dsh-exa-mcp-0.1.0.tgz
-# 或发布到 npm registry 后：dsh plugin add dsh-exa-mcp
-# 或推送到 GitHub 后：dsh plugin add github:you/dsh-exa-mcp
+npm pack                    # 生成 dsh-exa-mcp-0.2.0.tgz
+npm publish                 # 发布到 npm registry
 ```
 
-### 安装内容与文档的关系（GitHub 安装）
+或从 GitHub 安装：
 
-- **仓库**（git）包含全部文件：`cordis.patch.yml`、包文件与 `docs/` 四份文档——发布 GitHub 时必须全部提交
-- **运行时安装**（pnpm git 依赖 / npm 打包）只按 `package.json` 的 `files` 字段打包：仅 `cordis.patch.yml` 等运行时文件进入 `node_modules`，**`docs/` 不会下载安装到运行环境**（已用真实 git 依赖协议实测验证）
-- 结论：文档随仓库分发（可在线阅读/克隆），但不污染用户运行环境；修改 `files` 时请保持 `docs/` 排除在外
+```sh
+dsh plugin --profile web add github:MicroHEROX/dsh-exa-mcp
+```
 
-发布建议：在 GitHub 仓库添加 `dsh-plugin` topic（官方约定，见 [官方 README](https://github.com/deepseek-ai/deepseek-harness#readme)）。
+发布时必须提交仓库全部文件；npm/pnpm 只按 `files` 打包，`docs/` 不会安装到用户环境。若替换已安装的包，插件管理器可能返回 `restart-required`；按返回状态处理，不要仅凭 HMR 推断新包已生效。
 
 ## 7. 版本兼容
 
 | 组件 | 版本 | 说明 |
 |---|---|---|
-| `dsh-exa-mcp` | **0.1.0** | 语义化版本；破坏性变更走 minor 升版 |
-| `@deepseek-ai/dsh`（CLI） | **≥ 0.1.0-rc.5**，实测 **0.1.0-rc.6** | 0.1.0-rc.5 起随 CLI 附带 `@deepseek-ai/dsh-mcp-client` |
-| `@deepseek-ai/dsh-mcp-client` | `^0.1.0-rc.6`（由 CLI 解析） | 无需声明依赖 |
-| Exa MCP 端点 | server 3.2.1（2026-08-14 实测） | Exa 托管，可能变化；以 `tools/list` 返回为准 |
-| MCP 协议 | 2025-06-18 | 自动协商 |
-| Node.js | 实测 v24.16.0；建议 ≥ 22 | dsh 无 engines 声明 |
+| `dsh-exa-mcp` | **0.2.0** | 语义化版本；破坏性变更走 minor 升版 |
+| DeepSeek Harness CLI | 设计兼容 `>= 0.1.0-rc.5`；**实测 0.2.2-rc.3** | 0.1.0-rc.5 起随 CLI 附带 mcp-client |
+| `@deepseek-ai/dsh-mcp-client` | 由 DSH 解析；实测 **0.2.2-rc.3** | 本插件使用的字段在该版本仍受支持 |
+| Exa MCP 端点 | server **3.5.1**（2026-11-16 探测） | Exa 托管，可能变化；以 `tools/list` 为准 |
+| MCP 协议 | `2025-06-18`（探测值） | 自动协商 |
+| Node.js | DSH 要求 **≥ 24.9**；桌面实测 24.21.0 | 插件本身无 `engines` 声明 |
 | 平台 | Windows / macOS / Linux | 纯配置，无平台代码 |
 
-- dsh 处于 developer preview，可能发生破坏性变更；升级 dsh 后建议重跑 [SOLUTIONS.md](SOLUTIONS.md) 的验证清单
-- 本插件版本记录于 GitHub Releases 标签，与 `package.json` 的 `version` 一致
+dsh 处于 developer preview。升级 dsh 后建议重跑 [SOLUTIONS.md §4](SOLUTIONS.md) 的验证矩阵；跨版本升级前先读运行安装目录内的 `docs/upgrade-guide/README.md`。
 
 ## 8. 相关链接
 
-- 官方仓库：<https://github.com/deepseek-ai/deepseek-harness>
-- 本插件文档：[术语表](GLOSSARY.md) · [API 列表](API.md) · [解决方案](SOLUTIONS.md)
-- Exa MCP 官方文档：<https://exa.ai/docs/reference/exa-mcp>
-- Exa MCP 服务端源码：<https://github.com/exa-labs/exa-mcp-server>
+- 本插件：[README](../README.md) · [术语表](GLOSSARY.md) · [API](API.md) · [解决方案](SOLUTIONS.md)
+- DSH 仓库：<https://github.com/deepseek-ai/deepseek-harness>
+- DSH 发布：<https://github.com/deepseek-ai/deepseek-harness/releases>
+- mcp-client 文档：<https://github.com/deepseek-ai/deepseek-harness/tree/master/packages/mcp/mcp-client>
+- Exa MCP 文档：<https://exa.ai/docs/reference/exa-mcp>
+- Exa MCP 服务端：<https://github.com/exa-labs/exa-mcp-server>

@@ -1,7 +1,6 @@
 # Exa Search MCP for DeepSeek Harness
 
 <p align="center">
-  <a href="#english"><b>English</b></a> ·
   <a href="README.zh.md"><b>中文</b></a>
 </p>
 
@@ -11,16 +10,16 @@
   <a href="https://github.com/MicroHEROX/dsh-exa-mcp"><img alt="stars" src="https://img.shields.io/github/stars/MicroHEROX/dsh-exa-mcp"></a>
 </p>
 
-A third-party plugin that brings [Exa](https://exa.ai) — the neural web search and fetch engine — into [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`). It connects to Exa's hosted [MCP endpoint](https://mcp.exa.ai/mcp) (Streamable HTTP) through the MCP client bridge that ships with the `dsh` CLI, and registers Exa's tools as native agent tools under the `exa` namespace.
+A third-party plugin bundle that brings [Exa](https://exa.ai) — neural web search and full-page fetch — into [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`). It mounts Exa's hosted [MCP endpoint](https://mcp.exa.ai/mcp) (Streamable HTTP) through the MCP client bridge shipped with `dsh`, and registers Exa's tools as native agent tools under the `exa` namespace.
 
-```
+```text
 mcp__exa__web_search_exa   ·  mcp__exa__web_fetch_exa
-mcp__exa__web_search_advanced_exa  ·  mcp__exa__agent_run   (with an API key)
+mcp__exa__web_search_advanced_exa  ·  mcp__exa__agent_run   (whitelist; agent also needs a key)
 ```
 
-- Zero install footprint: no code runs in the dsh process — the upstream is Exa's official hosted endpoint.
-- Pure configuration bundle: one patch layer, no build step, no runtime API.
-- Never touches your deepseek-harness installation; it only adds one row to the composed `cordis.yml`.
+- **No third-party code in the dsh process** — the upstream is Exa's official hosted endpoint.
+- **Pure configuration bundle** — one patch row; no build step, no runtime module.
+- **Display-ready** — English/Chinese titles and descriptions plus an original SVG icon for the Plugin Manager.
 
 ---
 
@@ -28,7 +27,7 @@ mcp__exa__web_search_advanced_exa  ·  mcp__exa__agent_run   (with an API key)
 
 ### 1. Install
 
-**Option A — install as a plugin bundle (recommended, requires [pnpm](https://pnpm.io/install)):**
+**Option A — Plugin Manager (recommended).** Open **Settings → Plugins → Install** and use the package name, a GitHub spec, or a local directory. The CLI equivalent:
 
 ```sh
 npm install -g pnpm
@@ -36,112 +35,73 @@ dsh plugin --profile web add github:MicroHEROX/dsh-exa-mcp
 dsh web
 ```
 
-> **Verify after a `github:` install** — when the route to github.com is unstable, a `github:` (git) install can silently fail or finish with an un-synced `dsh.profile.bundles` (local `link:`/`file:` installs are unaffected). Verify and fix in one step:
->
-> ```sh
-> # check: does the bundle layer appear?
-> dsh --profile web --dump-config | grep -A2 "== dsh-exa-mcp"
-> # if not (or to fix preemptively), append the bundle to the profile manifest:
-> node -e "const fs=require('fs');const p=process.env.DSH_HOME+'/profiles/web/package.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));if(!(j.dsh.profile.bundles||[]).includes('dsh-exa-mcp')){j.dsh.profile.bundles=[...(j.dsh.profile.bundles||[]),'dsh-exa-mcp'];fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n','utf8');console.log('fixed: dsh-exa-mcp appended');}else{console.log('already present');}"
-> ```
->
-> The timing issue is reported upstream ([Discussions #656](https://github.com/deepseek-ai/deepseek-harness/discussions/656)); `--patch` overlays are never affected.
+> If GitHub is unstable, a `github:` install can silently miss the bundle layer. Verify with `dsh --profile web --dump-config | grep -A2 "== dsh-exa-mcp"`; local `link:`/`file:` installs and `--patch` overlays are unaffected. The full repair procedure is in [docs/SOLUTIONS.md §1.7](docs/SOLUTIONS.md#17-github-安装偶发不生效或卸载残留).
 
-**Option B — one-off overlay, no install:**
+**Option B — One-off overlay, no install:**
 
 ```sh
 dsh web --patch /path/to/dsh-exa-mcp/cordis.patch.yml
 ```
 
-**Option C — keep it permanently without installing:** merge the single `insert` block from `cordis.patch.yml` into `$DSH_HOME/profiles/<name>/cordis.patch.yml` (or `$DSH_HOME/cordis.patch.yml` for every profile).
+**Option C — Permanent without a bundle:** merge the single `insert` block from `cordis.patch.yml` into `$DSH_HOME/profiles/<name>/cordis.patch.yml` (or `$DSH_HOME/cordis.patch.yml` for every profile).
 
-> Install behavior: pnpm installs git dependencies through the `files` field, so `docs/` is **not** installed into your runtime — only `cordis.patch.yml` is. The docs live in this repository.
+Installation packs only `cordis.patch.yml`, `locale/`, `icon.svg`, the READMEs, and LICENSE into your runtime; `docs/` stays in this repository.
 
 ### 2. Provide an Exa API key (optional)
 
-The hosted endpoint works **anonymously** on Exa's free tier (rate-limited, basic tools only). To lift limits and unlock advanced search / Exa Agent, [create an API key](https://dashboard.exa.ai/api-keys) and set it in the environment:
+The endpoint works **anonymously** on Exa's free tier (rate-limited, basic tools only). For higher limits and advanced tools, [create an API key](https://dashboard.exa.ai/api-keys) and set it before launching dsh:
 
 ```sh
 export EXA_API_KEY="your-key"        # macOS / Linux
 $env:EXA_API_KEY = "your-key"        # Windows PowerShell
 ```
 
-The plugin **auto-detects** the key at load time: `EXA_API_KEY` set → sends `x-api-key`; unset → anonymous. Never put the key into any patch file.
+The plugin attaches `x-api-key` only when the variable is present; otherwise it falls back to anonymous access. Never put the key into a patch file.
 
 ### 3. Verify
 
-1. Start `dsh web` (with the bundle or overlay applied).
-2. Wait a moment for initial discovery (it is asynchronous).
-3. Ask: *"Use Exa to find the latest release notes of the DeepSeek Harness project on GitHub and summarize them."*
-4. Confirm the model called `mcp__exa__web_search_exa` (and `web_fetch_exa` for full text) and answered from the results.
+1. Start `dsh web` with the bundle or overlay applied.
+2. Ask: *"Use Exa to find the latest DeepSeek Harness release notes and summarize them."*
+3. Confirm the model called `mcp__exa__web_search_exa` (with `query` and `objective`) and, if needed, `mcp__exa__web_fetch_exa`.
 
 ---
 
-## What This Plugin Does
+## What It Does
 
-- Connects `https://mcp.exa.ai/mcp` via `@deepseek-ai/dsh-mcp-client` (`streamable-http` transport), the official bridge shipped with the dsh CLI.
-- Registers every tool Exa advertises under the spec-compliant name `mcp__exa__<tool>`; re-syncs automatically on `tools/list_changed` notifications.
-- Auto-authenticates: attaches `x-api-key` only when `EXA_API_KEY` is present (graceful anonymous fallback — no broken `undefined` header).
-- Tunes the bridge for search workloads: `toolCallTimeoutMs: 180000` for long research tasks; reconnect policy left at bridge defaults.
-- Follows dsh plugin conventions exactly: bundle manifest (`dsh.bundle.patch`), patch-layer composition, per-id override (`mcp-exa`), `!!js` config expressions only.
+- Connects `https://mcp.exa.ai/mcp` via `@deepseek-ai/dsh-mcp-client` (`streamable-http`), the official bridge shipped with dsh.
+- Registers every tool Exa advertises as `mcp__exa__<tool>`; re-syncs on `tools/list_changed`.
+- Attaches `x-api-key` only when `EXA_API_KEY` is set — no `undefined` header, no credential stored on disk.
+- Uses `toolCallTimeoutMs: 180000` for long research calls; reconnect behavior stays at bridge defaults.
+- Keeps `failOnStartupError: false`: an Exa outage does not reject plugin activation; the bridge logs and reconnects.
 
-## What This Plugin Does NOT Do
+## Limits
 
-- Does **not** download, host, or supervise any Exa server — the upstream is Exa's hosted endpoint.
-- Does **not** implement OAuth login (`https://mcp.exa.ai/mcp?login`) — the dsh MCP bridge has no OAuth flow; use an API key.
-- Does **not** bridge MCP resources or prompts — the harness only consumes MCP tools.
-- Does **not** choose Exa plans, manage billing, or store your API key — the key lives in your environment only.
-- Does **not** modify your deepseek-harness installation — installing/uninstalling only touches `$DSH_HOME/profiles/`.
+- Does **not** host, download, or supervise an Exa server.
+- Does **not** implement OAuth (`?login`); use an API key.
+- Does **not** bridge MCP resources or prompts — tools only.
+- Does **not** manage Exa billing or store your key.
+- Does **not** modify the dsh installation; install/uninstall only touches `$DSH_HOME/profiles/`.
 
-## Routes That Work
+## Configuration
 
-| Route | How |
+| Goal | How |
 |---|---|
-| Anonymous search + fetch | Do nothing — free tier, rate-limited, 2 tools |
-| Full tool set (advanced search, Agent) | Set `EXA_API_KEY` + restart; whitelist Agent via `?tools=` (below) |
-| Tool whitelist / default search type | Override the `mcp-exa` row's `url` with `?tools=web_search_exa,web_fetch_exa,agent_run` or `?defaultSearchType=fast` (see [docs/API.md](docs/API.md#2-配置接口mcp-exa-行)) |
-| Multiple MCP servers | Add more `mcp-client` rows with unique `serverName` values |
-| Hot reload | Edit the row in a patch layer — HMR reconnects without process restart |
-| Uninstall | `dsh plugin --profile <name> remove dsh-exa-mcp` — profile and base bundles stay intact |
+| Anonymous search + fetch | Do nothing; free tier, rate-limited, 2 tools |
+| Higher limits | Set `EXA_API_KEY` and restart dsh |
+| Enable advanced search | Override `url` with `?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa` |
+| Enable Exa Agent | Add `agent_run` to `?tools=` and use an API key; billing applies |
+| Change default search type | Add `?defaultSearchType=fast` to `url` |
 
-## Routes That Do NOT Work (by design)
-
-| Route | Why not |
-|---|---|
-| OAuth login flow | dsh mcp-client does not implement the OAuth handshake — use an API key |
-| MCP resources / prompts from Exa | The harness bridges tools only |
-| Per-request auth switching | The `EXA_API_KEY` decision is made at config evaluation (startup / HMR), not per call |
-| Using the same patch twice (bundle installed **and** `--patch`) | dsh fails loud with `duplicate loader entry id: mcp-exa` — pick one method |
-| API key in patch files | Keys belong in environment variables; committing them is a leak |
+Override the `mcp-exa` row by id from a later patch layer (no `insert`; `config` is replaced wholesale). Full fields and examples: [docs/API.md §2](docs/API.md#2-配置接口mcp-exa-行).
 
 ## Uninstall
 
-**Bundle installs** (installed via `dsh plugin add`):
-
 ```sh
 dsh plugin --profile <name> remove dsh-exa-mcp
-```
-
-Verify nothing remains:
-
-```sh
 dsh --profile <name> --dump-config | grep -c "dsh-exa-mcp"   # expect 0
 ```
 
-> If installed from a `github:` spec during an unstable network window, `remove` can leave a dangling `dsh-exa-mcp` entry in `dsh.profile.bundles`, which makes the profile fail to boot with `cannot resolve profile bundle "dsh-exa-mcp"`. Fix by removing the entry (node, no BOM):
->
-> ```sh
-> node -e "const fs=require('fs');const p=process.env.DSH_HOME+'/profiles/<name>/package.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.dsh.profile.bundles=(j.dsh.profile.bundles||[]).filter(b=>b!=='dsh-exa-mcp');fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n','utf8')"
-> ```
-
-**Overlay / manual installs** (no bundle):
-
-- `--patch` overlays: just drop the `--patch <path>/cordis.patch.yml` flag from your start command — nothing persists.
-- Patch merged into a profile file: delete the `mcp-exa` block (or the whole `insert` list) from `$DSH_HOME/profiles/<name>/cordis.patch.yml`, or `$DSH_HOME/cordis.patch.yml` for every profile.
-
-Optional: unset `EXA_API_KEY` in your environment if you no longer use Exa.
-
-Uninstalling never touches your deepseek-harness installation or any other bundle — it only edits the profile directory under `$DSH_HOME`.
+For `--patch` overlays, drop the flag. For a merged patch, delete the `mcp-exa` block. Uninstalling never touches the dsh installation or other bundles.
 
 ---
 
@@ -149,21 +109,27 @@ Uninstalling never touches your deepseek-harness installation or any other bundl
 
 | Component | Version | Notes |
 |---|---|---|
-| `dsh-exa-mcp` (this plugin) | **0.1.0** | See [releases](https://github.com/MicroHEROX/dsh-exa-mcp/releases) |
-| DeepSeek Harness CLI (`@deepseek-ai/dsh`) | **≥ 0.1.0-rc.5**, tested on **0.1.0-rc.8 / 0.1.1-rc.1** | The CLI ships the `@deepseek-ai/dsh-mcp-client` bridge this bundle mounts |
-| MCP bridge (`@deepseek-ai/dsh-mcp-client`) | `^0.1.0-rc.8` / `^0.1.1-rc.1` (resolved from the dsh CLI) | No separate install needed |
-| Exa MCP endpoint (`mcp.exa.ai/mcp`) | server **3.2.1** (probed 2026-08-14) | Exa-managed; may change without notice |
-| MCP protocol version | `2025-06-18` | Negotiated automatically |
-| Node.js | tested on **v24.16.0**; Node ≥ 22 recommended | dsh itself does not declare an `engines` range |
-| Platform | Windows / macOS / Linux | Config-only bundle; no platform-specific code |
+| `dsh-exa-mcp` | **0.2.0** | See [releases](https://github.com/MicroHEROX/dsh-exa-mcp/releases) |
+| DeepSeek Harness CLI | designed for **≥ 0.1.0-rc.5**; tested on **0.2.2-rc.3** | Ships the `@deepseek-ai/dsh-mcp-client` bridge |
+| MCP bridge | resolved from dsh; tested **0.2.2-rc.3** | No separate install |
+| Exa MCP endpoint | server **3.5.1** (2026-11-16) | Exa-managed; `tools/list` is authoritative |
+| MCP protocol | `2025-06-18` (negotiated) | Auto-negotiated |
+| Node.js | dsh requires **≥ 24.9** | Plugin itself declares no `engines` |
+| Platform | Windows / macOS / Linux | Config-only; no platform code |
 
-dsh is in developer preview and iterates rapidly. After upgrading `dsh`, re-run the verification steps from [docs/SOLUTIONS.md](docs/SOLUTIONS.md).
+dsh is in developer preview. After a dsh upgrade, re-run the checks in [docs/SOLUTIONS.md §4](docs/SOLUTIONS.md#四验证与取证).
 
 ## Security
 
-- The only secret involved is `EXA_API_KEY`, read from the environment at load time; it is sent to Exa as the `x-api-key` header and never written to any file by this plugin.
-- No third-party code executes inside the dsh process — the plugin is declarative configuration over the official bridge.
+- The only secret is `EXA_API_KEY`, read from the environment at load time and sent to Exa as `x-api-key`; the plugin never writes it to disk.
+- No third-party code executes inside the dsh process.
 - This repository contains no keys, no local paths, and no machine-specific data.
+
+## Documentation
+
+- [Project documentation](docs/PROJECT.md) · [Glossary](docs/GLOSSARY.md) · [API reference](docs/API.md) · [Solutions & pitfalls](docs/SOLUTIONS.md)
+- DeepSeek Harness: <https://github.com/deepseek-ai/deepseek-harness>
+- Exa MCP docs: <https://exa.ai/docs/reference/exa-mcp>
 
 ## License
 
@@ -173,15 +139,7 @@ dsh is in developer preview and iterates rapidly. After upgrading `dsh`, re-run 
 
 Built for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) by DeepSeek AI — the "everything is a plugin" harness built on [Cordis](https://github.com/cordiverse/paper). Powered by:
 
-- [Exa MCP Server](https://github.com/exa-labs/exa-mcp-server) — the hosted web search endpoint
-- [Model Context Protocol SDK](https://github.com/modelcontextprotocol/modelcontextprotocol) — the protocol this plugin speaks through
-- [@deepseek-ai/dsh-mcp-client](https://github.com/deepseek-ai/deepseek-harness/tree/master/packages/mcp/mcp-client) — the MCP bridge used by this bundle
-- [Cordis](https://github.com/cordiverse/cordis) and its plugin ecosystem — the framework under dsh
-
-Thank you to the DeepSeek Harness team and every open-source project this work builds on.
-
-## Documentation
-
-- [Project documentation](docs/PROJECT.md) · [Glossary](docs/GLOSSARY.md) · [API reference](docs/API.md) · [Solutions & pitfalls](docs/SOLUTIONS.md)
-- DeepSeek Harness: <https://github.com/deepseek-ai/deepseek-harness>
-- Exa MCP docs: <https://exa.ai/docs/reference/exa-mcp>
+- [Exa MCP Server](https://github.com/exa-labs/exa-mcp-server) — the hosted search endpoint
+- [Model Context Protocol](https://modelcontextprotocol.io/) — the protocol this bundle speaks
+- [@deepseek-ai/dsh-mcp-client](https://github.com/deepseek-ai/deepseek-harness/tree/master/packages/mcp/mcp-client) — the MCP bridge
+- [Cordis](https://github.com/cordiverse/cordis) and its plugin ecosystem
